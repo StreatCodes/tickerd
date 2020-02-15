@@ -62,11 +62,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 	<script>
 		const ws = new WebSocket('ws://localhost:8080/ws');
 		ws.onmessage = e => {
-			const message = JSON.parse(e.data);
-			console.log(message.Result)
+			// const message = JSON.parse(e.data);
+			// console.log(message.Result)
 		}
 		ws.onopen = () => {
-			ws.send(JSON.stringify({ID: 1, Method: "Hello", Params: {Name: "mort"}}))
+			for(let i = 0; i < 1000000; i++) {
+				ws.send(JSON.stringify({ID: i, Method: "Hello", Params: {Name: "mort"}}))
+			}
 			// ws.send(JSON.stringify({ID: 2, Method: "Fail", Params: {Message: "fail whale"}}))
 			// ws.send(JSON.stringify({ID: 3, Method: "sayHello", Params: {Name: "streats"}}))
 		}
@@ -112,72 +114,75 @@ type WSResp struct {
 
 //This can be multithreaded per message
 func websocketHandler(userID int, conn *websocket.Conn) {
-	//Loop all incoming messages
+	var err error
+	responseChan := make(chan WSResp)
+
+	go func() {
+		for response := range responseChan {
+			err := conn.WriteJSON(response)
+			if err != nil {
+				fmt.Printf("Failed to write json response %s\n", err)
+				close(responseChan)
+			}
+		}
+	}()
+
 	for {
+		//Get next avialable message
 		_, reader, err := conn.NextReader()
 		if err != nil {
-			fmt.Printf("Error getting next WS reader, closing connection: %s\n", err.Error())
-			conn.Close()
-			return
+			err = fmt.Errorf("Error getting next WS reader - %s", err)
+			break
 		}
 
 		var req WSReq
 		dec := json.NewDecoder(reader)
-		dec.Decode(&req)
+		err = dec.Decode(&req)
+		if err != nil {
+			err = fmt.Errorf("Error decoding message - %s", err)
+			break
+		}
 
 		//Handle request
-		res, respErr := handleRequest(userID, req.Method, req.Params)
-
-		var resp WSResp
-		resp.ID = req.ID
-		if respErr != nil {
-			tmp := respErr.Error()
-			resp.Error = &tmp
-		} else {
-			resp.Result = res
-		}
-
-		//Write response message
-		w, err := conn.NextWriter(websocket.TextMessage)
-		if err != nil {
-			fmt.Printf("Error getting next WS writer, closing connection: %s\n", err.Error())
-			conn.Close()
-			return
-		}
-
-		enc := json.NewEncoder(w)
-		err = enc.Encode(resp)
-		if err != nil {
-			fmt.Printf("Error encoding response: %s\n", err.Error())
-		}
-
-		err = w.Close()
-		if err != nil {
-			fmt.Printf("Error closing ws writer %s\n", err.Error())
-		}
+		go handleRequest(userID, req, responseChan)
 	}
+
+	fmt.Printf("Websocket error, closing connection: %s\n", err.Error())
+	conn.Close()
 }
 
-func handleRequest(userID int, method string, params json.RawMessage) ([]byte, error) {
-	if t, ok := handlers[method]; ok {
+func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
+	var res WSResp
+	var resErr error
+
+	// method string, params json.RawMessage
+	if t, ok := handlers[req.Method]; ok {
+		// fmt.Printf("Running %s\n", req.Method)
 		//Create new copy of the struct and fill its values
 		handler := reflect.New(reflect.TypeOf(t))
 
 		handlerInterface := handler.Interface()
-		json.Unmarshal(params, &handlerInterface)
+		json.Unmarshal(req.Params, &handlerInterface)
 
 		//Call method "Handle" which is garenteed to be avialable due to the interface
 		handle, _ := reflect.TypeOf(handlerInterface).MethodByName("Handle")
 		returnValues := handle.Func.Call([]reflect.Value{handler, reflect.ValueOf(userID)})
 
 		//Get method return values and handle error caveats
-		res := returnValues[0].Interface().([]byte)
-		var err error
+		res.Result = returnValues[0].Interface().([]byte)
 		if !returnValues[1].IsNil() {
-			err = returnValues[1].Elem().Interface().(error)
+			resErr = returnValues[1].Elem().Interface().(error)
 		}
-
-		return res, err
+	} else {
+		resErr = fmt.Errorf("Handler %s not found", req.Method)
 	}
-	return nil, fmt.Errorf("Handler %s not found", method)
+
+	res.ID = req.ID
+
+	if resErr != nil {
+		tmp := resErr.Error()
+		res.Error = &tmp
+	}
+
+	responseChan <- res
 }
