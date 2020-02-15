@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -66,7 +68,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 			// console.log(message.Result)
 		}
 		ws.onopen = () => {
-			for(let i = 0; i < 1000000; i++) {
+			for(let i = 0; i < 1000; i++) {
 				ws.send(JSON.stringify({ID: i, Method: "Hello", Params: {Name: "mort"}}))
 			}
 			// ws.send(JSON.stringify({ID: 2, Method: "Fail", Params: {Message: "fail whale"}}))
@@ -129,7 +131,8 @@ func websocketHandler(userID int, conn *websocket.Conn) {
 
 	for {
 		//Get next avialable message
-		_, reader, err := conn.NextReader()
+		var reader io.Reader
+		_, reader, err = conn.NextReader()
 		if err != nil {
 			err = fmt.Errorf("Error getting next WS reader - %s", err)
 			break
@@ -147,8 +150,11 @@ func websocketHandler(userID int, conn *websocket.Conn) {
 		go handleRequest(userID, req, responseChan)
 	}
 
-	fmt.Printf("Websocket error, closing connection: %s\n", err.Error())
-	conn.Close()
+	if !strings.Contains(err.Error(), "close 1001") {
+		fmt.Printf("Websocket error, closing connection: %s\n", err)
+		conn.Close()
+	}
+	close(responseChan)
 }
 
 func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
