@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -27,22 +26,6 @@ type MessageHandler interface {
 	Handle(userID int) ([]byte, error)
 }
 
-type Hello struct {
-	Name string
-}
-
-func (h Hello) Handle(userID int) ([]byte, error) {
-	return json.Marshal(fmt.Sprintf("Hello %s with ID of %d", h.Name, userID))
-}
-
-type Fail struct {
-	Message string
-}
-
-func (h Fail) Handle(userID int) ([]byte, error) {
-	return nil, errors.New(h.Message)
-}
-
 func registerHandler(name string, handler MessageHandler) {
 	handlers[name] = handler
 }
@@ -51,8 +34,7 @@ func initWeb() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/ws", initWebsocket)
 
-	registerHandler("Hello", Hello{})
-	registerHandler("Fail", Fail{})
+	registerHandler("Tickets", Tickets{})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
@@ -119,6 +101,7 @@ func websocketHandler(userID int, conn *websocket.Conn) {
 	var err error
 	responseChan := make(chan WSResp)
 
+	//Send responses back to client
 	go func() {
 		for response := range responseChan {
 			err := conn.WriteJSON(response)

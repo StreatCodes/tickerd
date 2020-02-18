@@ -1,0 +1,12 @@
+-- +migrate Up
+CREATE TABLE Session(
+	ID INT NOT NULL AUTO_INCREMENT,
+	UserID INT NOT NULL,
+	Token VARBINARY(128),
+	
+	PRIMARY KEY (ID),
+	FOREIGN KEY (UserID) REFERENCES User(ID)
+);
+
+-- +migrate Down
+DROP TABLE Session;
