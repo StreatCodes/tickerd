@@ -1,0 +1,57 @@
+:root {
+	--color-info: rgb(58, 129, 221);
+	--color-error: rgb(221, 58, 58);
+}
+
+/* NOTIFICATIONS */
+div#notification-box {
+	position: fixed;
+	bottom: 10px;
+	right: 10px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	flex-direction: column-reverse;
+}
+
+div#notification-box > .notification {
+	margin-bottom: 10px;
+	padding: 12px 16px;
+	background-color: var(--color-info);
+	color: white;
+	border-radius: 2px;
+
+	animation-name: notification-animation;
+	animation-duration: 20s; /* This needs to match the duration in notification.jsx */
+	animation-fill-mode: forwards;
+	animation-timing-function: linear;
+}
+
+@keyframes notification-animation {
+	0% {
+		transform: translateX(30px);
+		opacity: 0;
+	}
+	1% {
+		transform: translateX(0px);
+		opacity: 1;
+	}
+	99% {
+		transform: translateX(0px);
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(-30px);
+		opacity: 0;
+	}
+}
+
+div#notification-box > .notification.error {
+	background-color: var(--color-error);
+}
+
+/* LOGIN */
+.login-box {
+	max-width: 400px;
+	margin: 100px auto;
+}

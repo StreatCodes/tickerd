@@ -1,3 +1,5 @@
 /config.json
 /dbconfig.yml
 /ticker
+/frontend/node_modules
+/frontend/dist

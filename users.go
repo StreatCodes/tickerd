@@ -2,7 +2,10 @@ package main
 
 import (
 	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -11,30 +14,46 @@ import (
 
 //User the data describing a user
 type User struct {
-	ID    int
-	Name  string
-	Email string
-	Admin bool
+	ID    int    `db:"ID"`
+	Name  string `db:"Name"`
+	Email string `db:"Email"`
+	Admin bool   `db:"Admin"`
+}
+
+func createUser(name, email string, admin bool) (User, error) {
+	res := DB.MustExec(
+		`INSERT INTO User (Name, Email, Admin) VALUES (?, ?, ?)`,
+		name, email, admin,
+	)
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return User{}, err
+	}
+
+	return User{
+		ID:    int(id),
+		Name:  name,
+		Email: email,
+		Admin: admin,
+	}, nil
 }
 
 //refine this
 func tryLogin(email, password string) (int, bool, error) {
 	type userInfo struct {
-		ID       int
-		Password []byte
+		ID       int    `db:"ID"`
+		Password []byte `db:"Password"`
 	}
-	var users []userInfo
+	user := userInfo{}
 
-	err := DB.Select(&users, `SELECT ID, Password from User WHERE Email=$1`, email)
-	if err != nil {
+	err := DB.Get(&user, `SELECT ID, Password FROM User WHERE Email=?`, email)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, fmt.Errorf("No user with that email")
+	} else if err != nil {
 		return 0, false, err
 	}
 
-	if len(users) < 1 {
-		return 0, false, fmt.Errorf("No user with that email")
-	}
-
-	user := users[0]
 	err = bcrypt.CompareHashAndPassword(user.Password, []byte(password))
 	if err != nil {
 		return 0, false, err
@@ -55,7 +74,7 @@ func createSession(userID int) ([]byte, error) {
 		return nil, fmt.Errorf("Error couldn't read the full %d bytes of random data", tokenLength)
 	}
 
-	res := DB.MustExec(`INSERT INTO Session (UserID, Token) VALUES ($1, $2)`, userID, token)
+	res := DB.MustExec(`INSERT INTO Session (UserID, Token) VALUES (?, ?)`, userID, token)
 	_, err = res.LastInsertId()
 	if err != nil {
 		return nil, err
@@ -67,9 +86,10 @@ func createSession(userID int) ([]byte, error) {
 func validateToken(token []byte) (User, error) {
 	var user User
 
-	err := DB.Select(&user, `SELECT User.* FROM Session
-		WHERE Session.Token=$1
-		JOIN User.ID ON Session.UserID`, token)
+	err := DB.Get(&user, `SELECT User.ID, User.Name, User.Email, User.Admin
+		FROM Session
+		JOIN User ON User.ID = Session.UserID
+		WHERE Session.Token=?`, token)
 
 	return user, err
 }
@@ -92,7 +112,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok, err := tryLogin(loginReq.Email, loginReq.Password)
 	if err != nil {
-		http.Error(w, "An error occured while attempting to log you in", http.StatusInternalServerError)
+		http.Error(w, "An error occured while attempting to log you in - "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
@@ -100,7 +120,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := createSession(userID)
+	btoken, err := createSession(userID)
+	token := hex.EncodeToString(btoken)
 
-	w.Write(token)
+	enc := json.NewEncoder(w)
+	err = enc.Encode(token)
+	if err != nil {
+		fmt.Println("Error encoding response - " + err.Error())
+	}
 }

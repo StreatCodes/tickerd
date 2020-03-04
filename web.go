@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"reflect"
 	"strings"
 
@@ -30,43 +34,52 @@ func registerHandler(name string, handler MessageHandler) {
 	handlers[name] = handler
 }
 
-func initWeb() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/ws", initWebsocket)
+func createFileHandler(frontendDir http.Dir) func(w http.ResponseWriter, r *http.Request) {
+	fs := http.FileServer(frontendDir)
 
-	registerHandler("Tickets", Tickets{})
+	return func(w http.ResponseWriter, r *http.Request) {
+		p := path.Clean(r.URL.Path)
+		f, err := frontendDir.Open(p)
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+		if errors.Is(err, os.ErrNotExist) {
+			f, err := os.Open("./frontend/index.html")
+			if err != nil {
+				http.Error(w, "Error opening index.html - "+err.Error(), http.StatusInternalServerError)
+			}
+			_, err = io.Copy(w, f)
+			if err != nil {
+				http.Error(w, "Error writing index.html to response - "+err.Error(), http.StatusInternalServerError)
+			}
+			f.Close()
+		} else {
+			f.Close()
+			fs.ServeHTTP(w, r)
+		}
+	}
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`<html>
-	<head>
-	<body>
-	<script>
-		const ws = new WebSocket('ws://localhost:8080/ws');
-		ws.onmessage = e => {
-			// const message = JSON.parse(e.data);
-			// console.log(message.Result)
-		}
-		ws.onopen = () => {
-			for(let i = 0; i < 1000; i++) {
-				ws.send(JSON.stringify({ID: i, Method: "Hello", Params: {Name: "mort"}}))
-			}
-			// ws.send(JSON.stringify({ID: 2, Method: "Fail", Params: {Message: "fail whale"}}))
-			// ws.send(JSON.stringify({ID: 3, Method: "sayHello", Params: {Name: "streats"}}))
-		}
-		document.write("Hello")
-	</script>
-	</body>
-	</html>`))
+func initWeb() {
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/ws", initWebsocket)
+	http.HandleFunc("/", createFileHandler(http.Dir("frontend")))
+
+	httpAddr := ":8080"
+	fmt.Printf("Starting server at %s\n", httpAddr)
+	log.Fatal(http.ListenAndServe(httpAddr, nil))
 }
 
 func initWebsocket(w http.ResponseWriter, r *http.Request) {
 	//Check user is authenticated
-	token := r.Header.Get("API-Key")
-	user, err := validateToken([]byte(token))
+	token := r.URL.Query().Get("token")
+	btoken, err := hex.DecodeString(token)
 	if err != nil {
+		http.Error(w, "Failed to decode token", http.StatusBadRequest)
+		return
+	}
+
+	user, err := validateToken(btoken)
+	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "User validation failed", http.StatusUnauthorized)
 		return
 	}
