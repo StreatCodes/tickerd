@@ -129,3 +129,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error encoding response - " + err.Error())
 	}
 }
+
+func wshMe(userID int, body []byte) ([]byte, error) {
+	fmt.Printf("New request from user id %d\n", userID)
+	return nil, nil
+}

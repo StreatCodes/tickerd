@@ -71,11 +71,7 @@ func main() {
 
 	dbSetup()
 
-	registerHandler("echo", echoHandler)
+	registerHandler("me", wshMe)
 
 	initWeb()
-}
-
-func echoHandler(reqJSON []byte) ([]byte, error) {
-	return reqJSON, nil
 }
