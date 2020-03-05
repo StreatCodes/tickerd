@@ -115,6 +115,6 @@ class Session {
 	}
 
 	async me() {
-		return this._sendMessage('NonExistant', null); //TODO
+		return this._sendMessage('NonExistent', null); //TODO
 	}
 }
