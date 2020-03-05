@@ -13,19 +13,21 @@ function Main() {
 	const [token, setToken] = useState(null);
 	const [session, setSession] = useState(null);
 
-	useEffect(() => {
+	useEffect(async () => {
 		const token = window.localStorage.getItem('ticker-token');
 		if(token !== null) {
 			setToken(token);
 
-			ws.createSessionFromToken(token).then(session => {
+			try {
+				const session = await ws.createSessionFromToken(token);
 				setSession(session);
-				session.me().then(res => console.log(res));
-			}).catch(err => {
-				showNotification('error', `Invalid session: ${err.message}`);
+				const m = await session.echo("hello from main");
+				showNotification('success', m)
+			} catch(e) {
+				showNotification('error', `Invalid session: ${e.message}`);
 				// window.localStorage.removeItem('ticker-token');
 				setToken(null);
-			});
+			}
 		}
 	}, []);
 

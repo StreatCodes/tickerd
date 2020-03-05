@@ -14,14 +14,7 @@ import (
 //DB global access to the mysql DB
 var DB *sqlx.DB
 
-type Tickets struct {
-	Name string
-}
-
-func (h Tickets) Handle(userID int) ([]byte, error) {
-	return json.Marshal(fmt.Sprintf("Tickets %s with ID of %d", h.Name, userID))
-}
-
+//Config for the ticker application
 type Config struct {
 	DBURL string
 }
@@ -78,7 +71,11 @@ func main() {
 
 	dbSetup()
 
-	registerHandler("Tickets", Tickets{})
+	registerHandler("echo", echoHandler)
 
 	initWeb()
+}
+
+func echoHandler(reqJSON []byte) ([]byte, error) {
+	return reqJSON, nil
 }

@@ -92,7 +92,7 @@ class Session {
 			}
 
 			if(message.Error !== null) {
-				handler.reject(message.Error);
+				handler.reject(new Error(message.Error));
 			} else {
 				handler.resolve(message.Result);
 			}
@@ -112,6 +112,10 @@ class Session {
 			const request = {ID: count, Method: method, Params: params};
 			this.ws.send(JSON.stringify(request));
 		});
+	}
+
+	async echo(message) {
+		return this._sendMessage('echo', message);
 	}
 
 	async me() {

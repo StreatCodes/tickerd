@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -22,15 +21,13 @@ var upgrader = websocket.Upgrader{
 }
 
 var sockets = make(map[int]*websocket.Conn)
-var handlers = make(map[string]MessageHandler)
+var handlers = make(map[string]WSHandler)
 
-//MessageHandler requires the Handle method which handles incoming websocket RPC messages.
-//If successful, the bytes returned should be the result of json.Marashal
-type MessageHandler interface {
-	Handle(userID int) ([]byte, error)
-}
+//WSHandler receives json as bytes
+//Returns a JSON encoded result or throws an error
+type WSHandler func(reqJSON []byte) ([]byte, error)
 
-func registerHandler(name string, handler MessageHandler) {
+func registerHandler(name string, handler WSHandler) {
 	handlers[name] = handler
 }
 
@@ -154,35 +151,20 @@ func websocketHandler(userID int, conn *websocket.Conn) {
 }
 
 func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
-	var res WSResp
-	var resErr error
+	var err error
+	res := WSResp{
+		ID: req.ID,
+	}
 
 	// method string, params json.RawMessage
 	if t, ok := handlers[req.Method]; ok {
-		// fmt.Printf("Running %s\n", req.Method)
-		//Create new copy of the struct and fill its values
-		handler := reflect.New(reflect.TypeOf(t))
-
-		handlerInterface := handler.Interface()
-		json.Unmarshal(req.Params, &handlerInterface)
-
-		//Call method "Handle" which is garenteed to be avialable due to the interface
-		handle, _ := reflect.TypeOf(handlerInterface).MethodByName("Handle")
-		returnValues := handle.Func.Call([]reflect.Value{handler, reflect.ValueOf(userID)})
-
-		//Get method return values and handle error caveats
-		res.Result = returnValues[0].Interface().([]byte)
-		if !returnValues[1].IsNil() {
-			resErr = returnValues[1].Elem().Interface().(error)
-		}
+		res.Result, err = t(req.Params)
 	} else {
-		resErr = fmt.Errorf("Handler %s not found", req.Method)
+		err = fmt.Errorf("Handler %s not found", req.Method)
 	}
 
-	res.ID = req.ID
-
-	if resErr != nil {
-		tmp := resErr.Error()
+	if err != nil {
+		tmp := err.Error()
 		res.Error = &tmp
 	}
 
