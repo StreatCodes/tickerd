@@ -131,6 +131,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func wshMe(userID int, body []byte) ([]byte, error) {
-	fmt.Printf("New request from user id %d\n", userID)
-	return nil, nil
+	var user User
+	err := DB.Get(&user, `SELECT ID, Name, Email, Admin FROM User where ID=?`, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := json.Marshal(user)
+	return resp, err
 }
