@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/emersion/go-smtp v0.12.1
-	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gorilla/websocket v1.4.1
 	github.com/jmoiron/sqlx v1.2.0

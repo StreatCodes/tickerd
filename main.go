@@ -72,6 +72,7 @@ func main() {
 	dbSetup()
 
 	registerHandler("me", wshMe)
+	registerHandler("echo", echo)
 
 	initWeb()
 }

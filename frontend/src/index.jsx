@@ -4,6 +4,7 @@ import { Router } from 'preact-router';
 
 import {showNotification} from './notification.jsx'
 import {Login} from './login.jsx';
+import {Navigation} from './navigation.jsx';
 import {Home} from './home.jsx';
 
 import * as ws from './socket';
@@ -39,10 +40,12 @@ function Main() {
 		return <Login setSession={setSession} />
 	}
 
-	return <Router>
-		<Home path="/" />
-		<NotFound default />
-	</Router>
+	return <Navigation>
+		<Router>
+			<Home path="/" />
+			<NotFound default />
+		</Router>
+	</Navigation>
 }
 
 function NotFound() {

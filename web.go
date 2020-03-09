@@ -27,6 +27,10 @@ var handlers = make(map[string]WSHandler)
 //Returns a JSON encoded result or throws an error
 type WSHandler func(userID int, reqJSON []byte) ([]byte, error)
 
+func echo(userID int, reqJSON []byte) ([]byte, error) {
+	return reqJSON, nil
+}
+
 func registerHandler(name string, handler WSHandler) {
 	handlers[name] = handler
 }
