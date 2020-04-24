@@ -2,64 +2,48 @@ package main
 
 import (
 	"crypto/rand"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/asdine/storm/v3"
 	"golang.org/x/crypto/bcrypt"
 )
 
 //User the data describing a user
 type User struct {
-	ID    int    `db:"ID"`
-	Name  string `db:"Name"`
-	Email string `db:"Email"`
-	Admin bool   `db:"Admin"`
+	ID       int `storm:"increment"`
+	Name     string
+	Email    string `storm:"unique"`
+	Password []byte `json:"-"`
+	Admin    bool
 }
 
-func createUser(name, email string, admin bool) (User, error) {
-	res := DB.MustExec(
-		`INSERT INTO User (Name, Email, Admin) VALUES (?, ?, ?)`,
-		name, email, admin,
-	)
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return User{}, err
-	}
-
-	return User{
-		ID:    int(id),
-		Name:  name,
-		Email: email,
-		Admin: admin,
-	}, nil
+//Session websocket info
+type Session struct {
+	ID     []byte `storm:"id,increment"`
+	UserID int
 }
 
-//refine this
-func tryLogin(email, password string) (int, bool, error) {
-	type userInfo struct {
-		ID       int    `db:"ID"`
-		Password []byte `db:"Password"`
-	}
-	user := userInfo{}
-
-	err := DB.Get(&user, `SELECT ID, Password FROM User WHERE Email=?`, email)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, false, fmt.Errorf("No user with that email")
-	} else if err != nil {
-		return 0, false, err
-	}
-
-	err = bcrypt.CompareHashAndPassword(user.Password, []byte(password))
+func createUser(name, email string, password []byte, admin bool) (User, error) {
+	var user User
+	encryptedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 	if err != nil {
-		return 0, false, err
+		return user, err
 	}
 
-	return user.ID, true, nil
+	user.Name = name
+	user.Email = email
+	user.Admin = admin
+	user.Password = encryptedPassword
+
+	err = DB.Save(&user)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
 }
 
 func createSession(userID int) ([]byte, error) {
@@ -74,8 +58,10 @@ func createSession(userID int) ([]byte, error) {
 		return nil, fmt.Errorf("Error couldn't read the full %d bytes of random data", tokenLength)
 	}
 
-	res := DB.MustExec(`INSERT INTO Session (UserID, Token) VALUES (?, ?)`, userID, token)
-	_, err = res.LastInsertId()
+	session := Session{
+		UserID: userID,
+	}
+	err = DB.Save(&session)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +70,20 @@ func createSession(userID int) ([]byte, error) {
 }
 
 func validateToken(token []byte) (User, error) {
+	var session Session
 	var user User
 
-	err := DB.Get(&user, `SELECT User.ID, User.Name, User.Email, User.Admin
-		FROM Session
-		JOIN User ON User.ID = Session.UserID
-		WHERE Session.Token=?`, token)
+	err := DB.Get("Session", token, &session)
+	if err != nil {
+		return user, err
+	}
 
-	return user, err
+	err = DB.Get("User", user.ID, &user)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -110,17 +102,28 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok, err := tryLogin(loginReq.Email, loginReq.Password)
-	if err != nil {
-		http.Error(w, "An error occured while attempting to log you in - "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if !ok {
+	var user User
+	err = DB.One("Email", loginReq.Email, &user)
+	if err == storm.ErrNotFound {
 		http.Error(w, "Login request failed. Email or Password were incorrect.", http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		fmt.Println("Error looking up user: " + err.Error())
+		http.Error(w, "An error occured while attempting to log you in", http.StatusInternalServerError)
 		return
 	}
 
-	btoken, err := createSession(userID)
+	err = bcrypt.CompareHashAndPassword(user.Password, []byte(loginReq.Password))
+	if err == bcrypt.ErrMismatchedHashAndPassword {
+		http.Error(w, "Login request failed. Email or Password were incorrect.", http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		fmt.Println("Error occurred when comparing password hash: " + err.Error())
+		http.Error(w, "An error occured while attempting to log you in", http.StatusInternalServerError)
+		return
+	}
+
+	btoken, err := createSession(user.ID)
 	token := hex.EncodeToString(btoken)
 
 	enc := json.NewEncoder(w)

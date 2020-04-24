@@ -37,28 +37,28 @@ func (bkd *Backend) Login(state *smtp.ConnectionState, username, password string
 	if username != "streats" || password != "ASDoasodiandS*1dS" {
 		return nil, errors.New("Invalid username or password")
 	}
-	return &Session{}, nil
+	return &MailSession{}, nil
 }
 
 // AnonymousLogin requires clients to authenticate using SMTP AUTH before sending emails
 func (bkd *Backend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
-	return &Session{}, nil
+	return &MailSession{}, nil
 }
 
-// A Session is returned after successful login.
-type Session struct{}
+// A MailSession is returned after successful login.
+type MailSession struct{}
 
-func (s *Session) Mail(from string, opts smtp.MailOptions) error {
+func (s *MailSession) Mail(from string, opts smtp.MailOptions) error {
 	log.Println("Mail from:", from)
 	return nil
 }
 
-func (s *Session) Rcpt(to string) error {
+func (s *MailSession) Rcpt(to string) error {
 	log.Println("Rcpt to:", to)
 	return nil
 }
 
-func (s *Session) Data(r io.Reader) error {
+func (s *MailSession) Data(r io.Reader) error {
 	if b, err := ioutil.ReadAll(r); err != nil {
 		return err
 	} else {
@@ -67,8 +67,8 @@ func (s *Session) Data(r io.Reader) error {
 	return nil
 }
 
-func (s *Session) Reset() {}
+func (s *MailSession) Reset() {}
 
-func (s *Session) Logout() error {
+func (s *MailSession) Logout() error {
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -20,7 +21,10 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var sockets = make(map[int]*websocket.Conn)
+//SocketID used to keep track of websockets
+type SocketID [16]byte
+
+var sockets = make(map[SocketID]*websocket.Conn)
 var handlers = make(map[string]WSHandler)
 
 //WSHandler receives json as bytes
@@ -31,7 +35,9 @@ func registerHandler(name string, handler WSHandler) {
 	handlers[name] = handler
 }
 
-func createFileHandler(frontendDir http.Dir) func(w http.ResponseWriter, r *http.Request) {
+//Serves index.html if the path isn't found
+func createFileHandler(frontendPath string) func(w http.ResponseWriter, r *http.Request) {
+	frontendDir := http.Dir(frontendPath)
 	fs := http.FileServer(frontendDir)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +45,7 @@ func createFileHandler(frontendDir http.Dir) func(w http.ResponseWriter, r *http
 		f, err := frontendDir.Open(p)
 
 		if errors.Is(err, os.ErrNotExist) {
-			f, err := os.Open("./frontend/index.html")
+			f, err := os.Open(path.Join(frontendPath, "index.html"))
 			if err != nil {
 				http.Error(w, "Error opening index.html - "+err.Error(), http.StatusInternalServerError)
 			}
@@ -55,10 +61,23 @@ func createFileHandler(frontendDir http.Dir) func(w http.ResponseWriter, r *http
 	}
 }
 
+//This seems ridiculous
+func generateSocketID() SocketID {
+	token := SocketID{}
+	tempToken := make([]byte, len(SocketID{}))
+	rand.Read(tempToken)
+
+	for i := range tempToken {
+		token[i] = tempToken[i]
+	}
+
+	return token
+}
+
 func initWeb() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/ws", initWebsocket)
-	http.HandleFunc("/", createFileHandler(http.Dir("frontend")))
+	http.HandleFunc("/", createFileHandler("./frontend"))
 
 	httpAddr := ":8080"
 	fmt.Printf("Starting server at %s\n", httpAddr)
@@ -88,8 +107,9 @@ func initWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sockets[user.ID] = conn
-	go websocketHandler(user.ID, conn)
+	socketID := generateSocketID()
+	sockets[socketID] = conn
+	go websocketHandler(socketID, user.ID, conn)
 }
 
 //WSReq a message received from a websocket connection
@@ -107,7 +127,7 @@ type WSResp struct {
 }
 
 //This can be multithreaded per message
-func websocketHandler(userID int, conn *websocket.Conn) {
+func websocketHandler(socketID SocketID, userID int, conn *websocket.Conn) {
 	var err error
 	responseChan := make(chan WSResp)
 
@@ -147,7 +167,9 @@ func websocketHandler(userID int, conn *websocket.Conn) {
 		fmt.Printf("Websocket error, closing connection: %s\n", err)
 		conn.Close()
 	}
+
 	close(responseChan)
+	delete(sockets, socketID)
 }
 
 func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
