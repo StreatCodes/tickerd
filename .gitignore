@@ -1,5 +1,6 @@
 /config.json
 /dbconfig.yml
-/ticker
+/tickerd
 /frontend/node_modules
 /frontend/dist
+/cmd/rt_importer/rt_importer

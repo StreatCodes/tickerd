@@ -1,4 +1,4 @@
-module github.com/streatcodes/ticker
+module github.com/streatcodes/tickerd
 
 go 1.13
 

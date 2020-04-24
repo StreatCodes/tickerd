@@ -20,16 +20,12 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var sockets = make(map[int]*websocket.Conn)
+var sockets = make(map[int64]*websocket.Conn)
 var handlers = make(map[string]WSHandler)
 
 //WSHandler receives json as bytes
 //Returns a JSON encoded result or throws an error
-type WSHandler func(userID int, reqJSON []byte) ([]byte, error)
-
-func echo(userID int, reqJSON []byte) ([]byte, error) {
-	return reqJSON, nil
-}
+type WSHandler func(userID int64, reqJSON []byte) ([]byte, error)
 
 func registerHandler(name string, handler WSHandler) {
 	handlers[name] = handler
@@ -111,7 +107,7 @@ type WSResp struct {
 }
 
 //This can be multithreaded per message
-func websocketHandler(userID int, conn *websocket.Conn) {
+func websocketHandler(userID int64, conn *websocket.Conn) {
 	var err error
 	responseChan := make(chan WSResp)
 
@@ -154,7 +150,7 @@ func websocketHandler(userID int, conn *websocket.Conn) {
 	close(responseChan)
 }
 
-func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
+func handleRequest(userID int64, req WSReq, responseChan chan WSResp) {
 	var err error
 	res := WSResp{
 		ID: req.ID,

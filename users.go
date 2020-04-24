@@ -14,7 +14,7 @@ import (
 
 //User the data describing a user
 type User struct {
-	ID    int    `db:"ID"`
+	ID    int64  `db:"ID"`
 	Name  string `db:"Name"`
 	Email string `db:"Email"`
 	Admin bool   `db:"Admin"`
@@ -32,7 +32,7 @@ func createUser(name, email string, admin bool) (User, error) {
 	}
 
 	return User{
-		ID:    int(id),
+		ID:    id,
 		Name:  name,
 		Email: email,
 		Admin: admin,
@@ -40,9 +40,9 @@ func createUser(name, email string, admin bool) (User, error) {
 }
 
 //refine this
-func tryLogin(email, password string) (int, bool, error) {
+func tryLogin(email, password string) (int64, bool, error) {
 	type userInfo struct {
-		ID       int    `db:"ID"`
+		ID       int64  `db:"ID"`
 		Password []byte `db:"Password"`
 	}
 	user := userInfo{}
@@ -62,7 +62,7 @@ func tryLogin(email, password string) (int, bool, error) {
 	return user.ID, true, nil
 }
 
-func createSession(userID int) ([]byte, error) {
+func createSession(userID int64) ([]byte, error) {
 	tokenLength := 128
 	token := make([]byte, tokenLength)
 	c, err := rand.Read(token)
@@ -130,7 +130,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func wshMe(userID int, body []byte) ([]byte, error) {
+func wshMe(userID int64, body []byte) ([]byte, error) {
 	var user User
 	err := DB.Get(&user, `SELECT ID, Name, Email, Admin FROM User where ID=?`, userID)
 	if err != nil {

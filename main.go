@@ -35,7 +35,7 @@ func loadConfig() (Config, error) {
 }
 
 func dbSetup() error {
-	var count []int
+	var count []int64
 	err := DB.Select(&count, `SELECT COUNT(*) FROM User`)
 	if err != nil {
 		return err
