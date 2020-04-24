@@ -29,7 +29,7 @@ var handlers = make(map[string]WSHandler)
 
 //WSHandler receives json as bytes
 //Returns a JSON encoded result or throws an error
-type WSHandler func(reqJSON []byte) ([]byte, error)
+type WSHandler func(userID int64, reqJSON []byte) ([]byte, error)
 
 func registerHandler(name string, handler WSHandler) {
 	handlers[name] = handler
@@ -172,7 +172,7 @@ func websocketHandler(socketID SocketID, userID int, conn *websocket.Conn) {
 	delete(sockets, socketID)
 }
 
-func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
+func handleRequest(userID int64, req WSReq, responseChan chan WSResp) {
 	var err error
 	res := WSResp{
 		ID: req.ID,
@@ -180,7 +180,7 @@ func handleRequest(userID int, req WSReq, responseChan chan WSResp) {
 
 	// method string, params json.RawMessage
 	if t, ok := handlers[req.Method]; ok {
-		res.Result, err = t(req.Params)
+		res.Result, err = t(userID, req.Params)
 	} else {
 		err = fmt.Errorf("Handler %s not found", req.Method)
 	}

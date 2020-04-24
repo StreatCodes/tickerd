@@ -43,7 +43,3 @@ func main() {
 
 	initWeb()
 }
-
-func echoHandler(reqJSON []byte) ([]byte, error) {
-	return reqJSON, nil
-}

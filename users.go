@@ -46,7 +46,7 @@ func createUser(name, email string, password []byte, admin bool) (User, error) {
 	return user, nil
 }
 
-func createSession(userID int) ([]byte, error) {
+func createSession(userID int64) ([]byte, error) {
 	tokenLength := 128
 	token := make([]byte, tokenLength)
 	c, err := rand.Read(token)
@@ -131,4 +131,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("Error encoding response - " + err.Error())
 	}
+}
+
+func wshMe(userID int64, body []byte) ([]byte, error) {
+	var user User
+	err := DB.Get(&user, `SELECT ID, Name, Email, Admin FROM User where ID=?`, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := json.Marshal(user)
+	return resp, err
 }

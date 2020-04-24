@@ -114,11 +114,11 @@ class Session {
 		});
 	}
 
+	async me() {
+		return this._sendMessage('me', null);
+	}
 	async echo(message) {
 		return this._sendMessage('echo', message);
 	}
 
-	async me() {
-		return this._sendMessage('NonExistent', null); //TODO
-	}
 }

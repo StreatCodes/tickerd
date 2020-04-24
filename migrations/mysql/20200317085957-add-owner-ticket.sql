@@ -1,0 +1,14 @@
+-- +migrate Up
+ALTER TABLE Ticket
+ADD OwnerID INT NOT NULL;
+
+ALTER TABLE Ticket
+ADD CONSTRAINT FKTicketOwner
+FOREIGN KEY (OwnerID) REFERENCES User(ID); 
+
+-- +migrate Down
+ALTER TABLE Ticket
+DROP FOREIGN KEY FKTicketOwner;
+
+ALTER TABLE Ticket
+DROP COLUMN OwnerID;
