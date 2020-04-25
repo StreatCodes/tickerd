@@ -22,7 +22,7 @@ type User struct {
 
 //Session websocket info
 type Session struct {
-	ID     []byte `storm:"id,increment"`
+	Token  []byte `storm:"id"`
 	UserID int64
 }
 
@@ -59,6 +59,7 @@ func createSession(userID int64) ([]byte, error) {
 	}
 
 	session := Session{
+		Token:  token,
 		UserID: userID,
 	}
 	err = tickerDB.Save(&session)
@@ -78,7 +79,7 @@ func validateToken(token []byte) (User, error) {
 		return user, err
 	}
 
-	err = tickerDB.Get("User", user.ID, &user)
+	err = tickerDB.Get("User", session.UserID, &user)
 	if err != nil {
 		return user, err
 	}

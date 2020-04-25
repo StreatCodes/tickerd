@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/asdine/storm/codec/gob"
 	"github.com/asdine/storm/v3"
 )
 
@@ -29,7 +30,7 @@ func adminSetup() error {
 
 func main() {
 	var err error
-	tickerDB, err = storm.Open("ticker.db")
+	tickerDB, err = storm.Open("ticker.db", storm.Codec(gob.Codec))
 	if err != nil {
 		log.Fatalf("Failed to connect to ticker.db: %s\n", err)
 	}
@@ -40,7 +41,7 @@ func main() {
 		log.Fatalf("Error setting up DB: %s\n", err)
 	}
 
-	attachmentDB, err = storm.Open("attachments.db")
+	attachmentDB, err = storm.Open("attachments.db", storm.Codec(gob.Codec))
 	if err != nil {
 		log.Fatalf("Failed to connect to attachments.db: %s\n", err)
 	}

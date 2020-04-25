@@ -1,7 +1,7 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 
-import {createSessionFromCredentials} from './socket';
+import {createSessionFromCredentials} from './ticker';
 import { showNotification } from "./notification";
 
 async function login(e) {

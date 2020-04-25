@@ -7,7 +7,7 @@ import {Login} from './login.jsx';
 import {Navigation} from './navigation.jsx';
 import {Home} from './home.jsx';
 
-import * as ws from './socket';
+import * as ws from './ticker';
 
 function Main() {
 	const [tickets, dispatchTickets] = useReducer(ws.reducer, []);

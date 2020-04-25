@@ -33,5 +33,9 @@ module.exports = {
 	plugins: [
 		new CleanWebpackPlugin()
 	],
-	devtool: 'source-map'
+	devtool: 'source-map',
+	externals: {
+		'fetch': 'node-fetch',
+		'WebSocket': 'ws'
+	}
 };

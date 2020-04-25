@@ -3,6 +3,7 @@ module github.com/streatcodes/tickerd
 go 1.13
 
 require (
+	github.com/asdine/storm v2.1.2+incompatible
 	github.com/asdine/storm/v3 v3.1.1
 	github.com/emersion/go-smtp v0.12.1
 	github.com/gorilla/websocket v1.4.2

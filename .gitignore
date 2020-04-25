@@ -3,5 +3,6 @@
 /tickerd
 /frontend/node_modules
 /frontend/dist
-ticker.db
+/ticker.db
+/attachments.db
 /ticker

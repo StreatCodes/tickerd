@@ -1,3 +1,13 @@
+import fetch from 'node-fetch';
+import WebSocket from 'ws';
+
+let TESTPREFIX = '';
+let WSPREFIX = 'ws://localhost:8080';
+if(typeof window === 'undefined') {
+	TESTPREFIX = 'http://localhost:8080';
+} else {
+	WSPREFIX = `ws://${window.location.host}`
+}
 
 //TODO
 export function reducer(state, message) {
@@ -6,8 +16,10 @@ export function reducer(state, message) {
 
 //Fetches the initial websocket state and establishes a websocket connection for live updates
 export function connect() {
-	const ws = new WebSocket(`ws://${window.location.host}/ws`);
-	window.onbeforeunload = () => {console.log('Closing websocket connection'); ws.close();}
+	const ws = new WebSocket(`${WSPREFIX}/ws`);
+	if(typeof window !== 'undefined') {
+		window.onbeforeunload = () => {console.log('Closing websocket connection'); ws.close();}
+	}
 
 	//Get full state and mark them as inserts
 	ws.onopen = async function() {
@@ -21,7 +33,7 @@ export function connect() {
 
 	ws.onclose = function(e) {
 		showNotification('error', 'Websocket closed, scheduling reconnect');
-		window.setTimeout(() => {
+		setTimeout(() => {
 			connect();
 		}, 5000);
 	}
@@ -42,7 +54,7 @@ export async function createSessionFromCredentials(email, password) {
 		Password: password
 	};
 	
-	const res = await fetch('/login', {
+	const res = await fetch(`${TESTPREFIX}/login`, {
 		method: 'POST',
 		body: JSON.stringify(body)
 	});
@@ -51,7 +63,7 @@ export async function createSessionFromCredentials(email, password) {
 		throw new Error(await res.text());
 	} else {
 		const token = await res.json()
-		window.localStorage.setItem('ticker-token', token);
+		// window.localStorage.setItem('ticker-token', token);
 
 		return new Session(token);
 	}
@@ -64,8 +76,8 @@ class Session {
 		this.setConnected = null;
 		this.connected = new Promise(resolve => this.setConnected = resolve);
 		this.pendingMessage = new Map();
-		this.ws = new WebSocket(`ws://${window.location.host}/ws?token=${token}`)
-		
+		this.ws = new WebSocket(`${WSPREFIX}/ws?token=${token}`)
+
 		this.ws.onopen = e => {
 			this.setConnected();
 			console.log(`Websocket connection established`);
