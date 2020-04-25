@@ -1,22 +1,33 @@
 package main
 
-import "github.com/jmoiron/sqlx"
+import (
+	"encoding/json"
+)
 
 //Queue mapped to DB type
 type Queue struct {
-	ID    int64
+	ID    int64 `storm:"increment"`
 	Name  string
 	Email string
 }
 
-func createQueue(db *sqlx.DB, name, email string) (int64, error) {
-	res, err := db.Exec(
-		`INSERT INTO Queue(Name, Email) VALUES (?, ?)`,
-		name, email,
-	)
+//WSCreateQueue websocket handler for the creation of queues
+func WSCreateQueue(userID int64, reqJSON []byte) ([]byte, error) {
+	var queue Queue
+	err := json.Unmarshal(reqJSON, &queue)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	return res.LastInsertId()
+	err = tickerDB.Save(&queue)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := json.Marshal(queue)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

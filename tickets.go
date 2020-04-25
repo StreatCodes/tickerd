@@ -5,98 +5,50 @@ import (
 	"time"
 )
 
-const (
-	//NEW ticket
-	NEW = iota
-	//OPEN ticket
-	OPEN = iota
-	//CLOSED ticket
-	CLOSED = iota
-)
-
 //Ticket go representation of DB type
 type Ticket struct {
-	ID        int64
-	QueueID   int64
+	ID        int64 `storm:"increment"`
+	QueueID   int64 `storm:"index"`
 	Subject   string
-	Status    int64
-	Priority  int64
+	Requestor string
+	Status    string `storm:"index"`
+	Priority  uint8
 	CreatedAt time.Time
+	Replies   []Reply
+	Comments  []Comment
 }
 
-const (
-	//REPLY correspondence on ticket
-	REPLY = iota
-	//COMMENT correspondence on ticket
-	COMMENT = iota
-)
-
+//Reply to a Ticket, either from an external email address
+//or repliedfrom the web interface
 type Reply struct {
-	Body       string
-	Type       string
-	RenderType string
+	Body        string
+	RenderType  string
+	Attachments []Attachment
+	CreatedAt   time.Time
 }
 
-//WSCreateTicket websocket handler for the creation of tickets,
-//It also writes the first reply (the body of the original ticket)
+//Comment an internal note on a ticket (does not get sent to the customer)
+type Comment struct {
+	Body        string
+	Attachments []Attachment
+	CreatedAt   time.Time
+	EditedAt    time.Time
+}
+
+//WSCreateTicket websocket handler for the creation of tickets
 func WSCreateTicket(userID int64, reqJSON []byte) ([]byte, error) {
-	type ticketReq struct {
-		Ticket Ticket
-		Reply  Reply
-	}
-
-	type ticketRes struct {
-		TicketID int64
-		ReplyID  int64
-	}
-
-	var ticket ticketReq
-
+	var ticket Ticket
 	err := json.Unmarshal(reqJSON, &ticket)
 	if err != nil {
 		return nil, err
 	}
 
-	//Create ticket in DB
-	tx, err := DB.Begin()
-	row, err := tx.Exec(
-		`INSERT INTO 
-		Ticket(QueueID, Subject, Status, Priority, CreatedAt)
-		VALUES (?, ?, ?, 0, NOW())`,
-		ticket.Ticket.QueueID, ticket.Ticket.Subject, NEW,
-	)
+	err = tickerDB.Save(&ticket)
 	if err != nil {
 		return nil, err
 	}
 
-	ticketID, err := row.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	//Create reply in DB
-	row, err = tx.Exec(
-		`INSERT INTO 
-		Ticket(TicketID, Body, Type, RenderType, CreatedAt)
-		VALUES (?, ?, ?, ?, NOW())`,
-		ticketID, ticket.Reply.Body, ticket.Reply.Type, ticket.Reply.RenderType,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	replyID, err := row.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	//Response json
-	res, err := json.Marshal(ticketRes{TicketID: ticketID, ReplyID: replyID})
+	res, err := json.Marshal(ticket)
 	if err != nil {
 		return nil, err
 	}

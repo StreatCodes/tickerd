@@ -7,11 +7,12 @@ import (
 	"github.com/asdine/storm/v3"
 )
 
-//DB global access to the DB
-var DB *storm.DB
+//global access to databases
+var tickerDB *storm.DB
+var attachmentDB *storm.DB
 
 func adminSetup() error {
-	count, err := DB.Count(&User{})
+	count, err := tickerDB.Count(&User{})
 	if err != nil {
 		return err
 	}
@@ -28,18 +29,28 @@ func adminSetup() error {
 
 func main() {
 	var err error
-	DB, err = storm.Open("ticker.db")
+	tickerDB, err = storm.Open("ticker.db")
 	if err != nil {
 		log.Fatalf("Failed to connect to ticker.db: %s\n", err)
 	}
-	defer DB.Close()
+	defer tickerDB.Close()
 
 	err = adminSetup()
 	if err != nil {
 		log.Fatalf("Error setting up DB: %s\n", err)
 	}
 
+	attachmentDB, err = storm.Open("attachments.db")
+	if err != nil {
+		log.Fatalf("Failed to connect to attachments.db: %s\n", err)
+	}
+	defer attachmentDB.Close()
+
 	registerHandler("echo", echoHandler)
 
 	initWeb()
+}
+
+func echoHandler(userID int64, req []byte) ([]byte, error) {
+	return req, nil
 }

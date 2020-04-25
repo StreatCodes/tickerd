@@ -127,7 +127,7 @@ type WSResp struct {
 }
 
 //This can be multithreaded per message
-func websocketHandler(socketID SocketID, userID int, conn *websocket.Conn) {
+func websocketHandler(socketID SocketID, userID int64, conn *websocket.Conn) {
 	var err error
 	responseChan := make(chan WSResp)
 
