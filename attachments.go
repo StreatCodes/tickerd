@@ -39,7 +39,7 @@ func WSCreateAttachment(userID int64, reqJSON []byte) ([]byte, error) {
 
 	attachment.Hash = hasher.Sum(nil)
 
-	err = tickerDB.Save(&attachment)
+	err = attachmentDB.Save(&attachment)
 	if err != nil {
 		return nil, err
 	}
