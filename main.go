@@ -47,11 +47,7 @@ func main() {
 	}
 	defer attachmentDB.Close()
 
-	registerHandler("echo", echoHandler)
+	registerHandler("createTicket", WSCreateTicket)
 
 	initWeb()
-}
-
-func echoHandler(userID int64, req []byte) ([]byte, error) {
-	return req, nil
 }

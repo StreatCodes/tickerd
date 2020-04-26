@@ -9,6 +9,34 @@ if(typeof window === 'undefined') {
 	WSPREFIX = `ws://${window.location.host}`
 }
 
+/**
+ * @typedef Ticket
+ * @type {object}
+ * @property {number} ID - Ticket ID, null to auto increment
+ * @property {number} QueueID - The ID of the Queue to assign the ticket to
+ * @property {string} Subject - Ticket subject
+ * @property {string} Requestor - Email of the requestor
+ * @property {string} Status - new|open|closed omit for new
+ * @property {number} Priority - 0-255 priority
+ * @property {string} CreatedAt - A datetime, null for Now()
+ * @property {Reply[]} Replies - Array of Replies
+ * @property {Comment[]} Comments - Array of comments
+ * 
+ * @typedef Reply
+ * @type {object}
+ * @property {string} Body - The body of the reply
+ * @property {string} RenderType - The type of the body contents html|plaintext
+ * @property {string[]} AttachmentHashes - List of attachment hashes
+ * @property {string} CreatedAt - A datetime, null for Now()
+ * 
+ * @typedef Comment
+ * @type {object}
+ * @property {string} Body - The body of the reply
+ * @property {string[]} AttachmentHashes - List of attachment hashes
+ * @property {string} CreatedAt - A datetime, null for Now()
+ * @property {string} EditedAt - Date the comment was last edited (can be null)
+ */
+
 //TODO
 export function reducer(state, message) {
 	return state;
@@ -111,6 +139,10 @@ class Session {
 		}
 	}
 
+	close() {
+		this.ws.close()
+	}
+
 	//Create new promise and reject/resolve responses with matching IDs from the server
 	async _sendMessage(method, params) {
 		//Wait to be connected
@@ -133,4 +165,15 @@ class Session {
 		return this._sendMessage('echo', message);
 	}
 
+
+	/**
+	 * Create a ticket including any replies and comments,
+	 * which can be useful for importers
+	 *
+	 * @param {Ticket} ticket
+	 * @memberof Session
+	 */
+	async createTicket(ticket) {
+		return this._sendMessage('createTicket', ticket);
+	}
 }

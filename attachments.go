@@ -7,6 +7,9 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+//AttachmentHash is a blake2b 256 (32byte) length byte array
+type AttachmentHash []byte
+
 //Attachment on replies or comments, images, pdfs, any
 //type of email attachment
 type Attachment struct {
