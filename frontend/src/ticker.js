@@ -35,6 +35,12 @@ if(typeof window === 'undefined') {
  * @property {string[]} AttachmentHashes - List of attachment hashes
  * @property {string} CreatedAt - A datetime, null for Now()
  * @property {string} EditedAt - Date the comment was last edited (can be null)
+ * 
+ * @typedef Queue
+ * @type {object}
+ * @property {number} ID - ID of the queue
+ * @property {string} Name - Queue name (must be unique)
+ * @property {string} Email - Email associated with the queue (emails with this To Addr will be routed to this queue)
  */
 
 //TODO
@@ -108,7 +114,6 @@ class Session {
 
 		this.ws.onopen = e => {
 			this.setConnected();
-			console.log(`Websocket connection established`);
 		}
 
 		this.ws.onclose = e => {
@@ -132,7 +137,7 @@ class Session {
 			}
 
 			if(message.Error !== null) {
-				handler.reject(new Error(message.Error));
+				handler.reject(new Error(message.Error.trim()));
 			} else {
 				handler.resolve(message.Result);
 			}
@@ -175,5 +180,45 @@ class Session {
 	 */
 	async createTicket(ticket) {
 		return this._sendMessage('createTicket', ticket);
+	}
+
+	/**
+	 * Create a queue
+	 *
+	 * @param {Queue} queue
+	 * @memberof Session
+	 */
+	async createQueue(queue) {
+		return this._sendMessage('createQueue', queue);
+	}
+
+	/**
+	 * Update a queue
+	 *
+	 * @param {Queue} queue
+	 * @memberof Session
+	 */
+	async updateQueue(queue) {
+		return this._sendMessage('updateQueue', queue);
+	}
+
+	/**
+	 * List all queues
+	 *
+	 * @memberof Session
+	 */
+	async listQueues() {
+		return this._sendMessage('listQueues', null);
+	}
+	
+
+	/**
+	 * Delete a queue
+	 *
+	 * @param {number} queueID
+	 * @memberof Session
+	 */
+	async deleteQueue(queueID) {
+		return this._sendMessage('deleteQueue', queueID);
 	}
 }

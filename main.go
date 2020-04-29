@@ -49,5 +49,10 @@ func main() {
 
 	registerHandler("createTicket", WSCreateTicket)
 
+	registerHandler("createQueue", WSCreateQueue)
+	registerHandler("updateQueue", WSUpdateQueue)
+	registerHandler("listQueues", WSListQueues)
+	registerHandler("deleteQueue", WSDeleteQueue)
+
 	initWeb()
 }
