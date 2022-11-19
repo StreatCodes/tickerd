@@ -22,7 +22,7 @@
     "preact": "^10.4.1",
     "preact-router": "^3.2.1",
     "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11",
+    "webpack-cli": "^3.3.12",
     "ws": "^7.2.5"
   }
 }
